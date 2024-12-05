@@ -1,4 +1,6 @@
 from z3 import *
+set_param('verbose', 10)
+
 # from BitVector import BitVector
 # Type = Datatype(f'Tuple({a.name()},{b.name()},{c.name()},{d.name()})')
 # def Tuple(a, b, c, d):
@@ -49,20 +51,20 @@ def fp_adder_exp_AgeqB(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, 
     # tmp_mant_low = Extract(22, 0, tmp_mant)
     tmp_mant_low = Extract(23, 0, tmp_mant)
 
-    mant_res = BitVec('mant_res', 25)
+    # mant_res = BitVec('mant_res', 25)
     mant_res_cons = Bool('mant_res_cons')
     cout = BitVec('cout', 1)
     # mant_tuple = mkOpTuple(mant_res, mant_res_cons, cout)
     mant_tuple = If(a_sign == b_sign, adder_tuple_wrapper(a_mant, tmp_mant_low), subtractor_tuple_wrapper(a_mant, tmp_mant_low))
     # print("mant_tuple size = ", op_first(mant_tuple).size())
-    constraint = And(constraint, Extract(23, 0, mant_res) == op_first(mant_tuple))
-    constraint = And(constraint, Extract(24, 24, mant_res) == op_third(mant_tuple))
+    constraint = And(constraint, Extract(23, 0, out_mant) == op_first(mant_tuple))
+    constraint = And(constraint, Extract(24, 24, out_mant) == op_third(mant_tuple))
     constraint = And(constraint, op_second(mant_tuple))
     # pad = BitVecVal(0, 1)
     # mant_res_final = BitVec('mant_res_final', 25)
     # constraint = And(constraint, mant_res_final == Concat(pad, mant_res))
 
-    ret_tuple = mkTupleType(constraint, mant_res, out_exp, out_sign)
+    ret_tuple = mkTupleType(constraint, out_mant, out_exp, out_sign)
 
     return ret_tuple
 
@@ -93,13 +95,15 @@ def fp_adder_exp_BgeqA(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, 
 
     tmp_mant_low = Extract(23, 0, tmp_mant)
 
-    mant_res = BitVec('mant_res', 24)
+    mant_res = BitVec('mant_res', 25)
     mant_res_cons = Bool('mant_res_cons')
     cout = BitVec('cout', 1)
     # mant_tuple = mkOpTuple(mant_res, mant_res_cons, cout)
     mant_tuple = If(a_sign == b_sign, adder_tuple_wrapper(b_mant, tmp_mant_low), subtractor_tuple_wrapper(b_mant, tmp_mant_low))
-    
-    constraint = And(constraint, Extract(22, 0, op_first(mant_tuple)) == Extract(22, 0, mant_res))
+    # print("mant_tuple sort =  ", mant_tuple[0])
+    # print("mant_tuple =  ", op_first(mant_tuple))
+
+    constraint = And(constraint, Extract(22, 0, op_first(mant_tuple)) == Extract(22, 0, out_mant))
     # constraint = And(constraint, Extract(24, 24, op_third(mant_tuple)) == cout)
     constraint = And(constraint, op_second(mant_tuple))
 
@@ -112,7 +116,7 @@ def fp_adder_exp_BgeqA(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, 
     # constraint = And(constraint, mant_res_final == Concat(pad, mant_res))
     
     # Changing how the ret tuple is composed here somehow segfaults the code
-    ret_tuple = mkTupleType(constraint, mant_res, out_exp, out_sign)
+    ret_tuple = mkTupleType(constraint, out_mant, out_exp, out_sign)
 
     # ret_tuple = mkTupleType(constraint, mant_res_final, out_exp, out_sign)
     return ret_tuple
@@ -211,7 +215,7 @@ def add_normaliser(in_exp, in_mant):
     constraint = True
 
     # If(Extract(23, _, in_mant) == 0 _, norm_sub_shift(in_exp, in_mant, _), _)
-    print("in_mant.size = ", in_mant.size())
+    # print("in_mant.size = ", in_mant.size())
 
     normaliser_mant = BitVec('normaliser_mant', 25)
     normaliser_exp = BitVec('normaliser_exp', 8)
@@ -269,9 +273,10 @@ def fp_sign_compare(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant_full
     constraint = And(constraint, ret_exp == third(if_tuple))
     constraint = And(constraint, ret_sign == fourth(if_tuple))
 
-    ret_tuple = mkTupleType(constraint, ret_mant, ret_exp, ret_sign)  
+    # ret_tuple = mkTupleType(constraint, ret_mant, ret_exp, ret_sign)  
 
-    return ret_tuple
+    # return ret_tuple
+    return constraint
     # return non_norm_constraint, non_norm_mant, non_norm_exp, non_norm_sign 
 
 # Issue: If cannot handle tuples in return statement
@@ -294,9 +299,10 @@ def fp_mant_compare(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant_full
     constraint = And(constraint, ret_sign == fourth(if_tuple))
     # first(ret_tuple) = constraint
 
-    ret_tuple = mkTupleType(constraint, ret_mant, ret_exp, ret_sign)  
+    # ret_tuple = mkTupleType(constraint, ret_mant, ret_exp, ret_sign)  
 
-    return ret_tuple
+    # return ret_tuple
+    return constraint
     # return non_norm_constraint, non_norm_mant, non_norm_exp, non_norm_sign              
 
 def fp_exp_compare(a_sign, b_sign, non_norm_sign, a_exp, b_exp, non_norm_exp, a_mant_full, b_mant_full, non_norm_mant):
@@ -389,48 +395,55 @@ def fp_adder(a, b):
     # b_mant_full = Concat(hidden_bit, b_mant)
     # print("a_mant_full.size = ", a_mant_full.size())
     # print("b_mant_full.size = ", b_mant_full.size())
-
+    # print("not explicitly added : ", constraint, "\n")
     constraint = And(constraint, (a_mant_full == Concat(hidden_bit, a_mant)))
     constraint = And(constraint, (b_mant_full == Concat(hidden_bit, b_mant)))
-
+    # print("explicitly added : ", constraint)
     # non_norm_constraint = Bool('non_norm_constraint')
     non_norm_constraint = Bool('non_norm_constraint')
-    non_norm_mant = BitVec('non_norm_mant', 25)
-    non_norm_exp = BitVec('non_norm_exp', 8)
-    non_norm_sign = BitVec('non_norm_exp', 1)
+    # non_norm_mant = BitVec('non_norm_mant', 25)
+    # non_norm_exp = BitVec('non_norm_exp', 8)
+    # non_norm_sign = BitVec('non_norm_exp', 1)
 
     # non_norm_tuple = Tuple(non_norm_constraint, non_norm_mant, non_norm_exp, non_norm_sign)
     # non_norm_tuple = mkTupleType(non_norm_constraint, non_norm_mant, non_norm_exp, non_norm_sign)   
 
-    non_norm_tuple = If(a_exp == b_exp, fp_sign_compare(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant_full, b_mant_full, out_mant), fp_exp_compare(a_sign, b_sign, non_norm_sign, a_exp, b_exp, non_norm_exp, a_mant_full, b_mant_full, non_norm_mant))
+    # fp_sign_compare had "out" being passed to it, fp_exp_compare had "non_norm" being passed to it
+    non_norm_tuple = If(a_exp == b_exp, fp_sign_compare(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant_full, b_mant_full, out_mant), fp_exp_compare(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant_full, b_mant_full, out_mant))
                                                         # exponents not same function in remaining case
-    
+    # print("non_norm_tuple constraints: ", first(non_norm_tuple))
+    # constraint = And(constraint, first(non_norm_tuple))
+    # constraint = And(constraint, (non_norm_mant == second(non_norm_tuple)))
+    # constraint = And(constraint, (non_norm_exp == third(non_norm_tuple)))
+    # constraint = And(constraint, (out_sign == fourth(non_norm_tuple)))
+
     constraint = And(constraint, first(non_norm_tuple))
-    constraint = And(constraint, (non_norm_mant == second(non_norm_tuple)))
-    constraint = And(constraint, (non_norm_exp == third(non_norm_tuple)))
+    constraint = And(constraint, (out_mant_final == Extract(22, 0, second(non_norm_tuple))))
+    constraint = And(constraint, (out_exp == third(non_norm_tuple)))
     constraint = And(constraint, (out_sign == fourth(non_norm_tuple)))
     
-    # constraint = And(constraint, non_norm_constraint)
-    # constraint = And(constraint, (out_sign == non_norm_constraint))
-    ovf_mant = BitVec('ovf_mant', 25)
-    ovf_exp = BitVec('ovf_exp', 8)
-    # ovf_sign = BitVec('ovf_exp', 1)
+    
+    # # constraint = And(constraint, non_norm_constraint)
+    # # constraint = And(constraint, (out_sign == non_norm_constraint))
+    # ovf_mant = BitVec('ovf_mant', 25)
+    # ovf_exp = BitVec('ovf_exp', 8)
+    # # ovf_sign = BitVec('ovf_exp', 1)
 
-    ovf_tuple = If(Extract(24, 24, out_mant) == 1, handle_ovf(third(non_norm_tuple), second(non_norm_tuple)), mkNormTuple(True, third(non_norm_tuple), second(non_norm_tuple)))
-    # norm_cons, norm_exp, norm_mant = adder(non_norm_exp, non_norm_mant)
+    # ovf_tuple = If(Extract(24, 24, out_mant) == 1, handle_ovf(third(non_norm_tuple), second(non_norm_tuple)), mkNormTuple(True, third(non_norm_tuple), second(non_norm_tuple)))
+    # # norm_cons, norm_exp, norm_mant = adder(non_norm_exp, non_norm_mant)
 
-    constraint = And(constraint, norm_first(ovf_tuple))
-    constraint = And(constraint, ovf_exp == norm_second(ovf_tuple))
-    constraint = And(constraint, ovf_mant == norm_third(ovf_tuple))
+    # constraint = And(constraint, norm_first(ovf_tuple))
+    # constraint = And(constraint, ovf_exp == norm_second(ovf_tuple))
+    # constraint = And(constraint, ovf_mant == norm_third(ovf_tuple))
 
-    # constraint = And(constraint, out_exp == norm_exp)
-    # constraint = And(constraint, out_mant == norm_mant)
+    # # constraint = And(constraint, out_exp == norm_exp)
+    # # constraint = And(constraint, out_mant == norm_mant)
 
-    final_norm_tuple = add_normaliser(norm_second(ovf_tuple), norm_third(ovf_tuple))
+    # final_norm_tuple = add_normaliser(norm_second(ovf_tuple), norm_third(ovf_tuple))
 
-    constraint = And(constraint, norm_first(final_norm_tuple))
-    constraint = And(constraint, out_exp == norm_second(final_norm_tuple))
-    constraint = And(constraint, out_mant_final == Extract(22, 0, norm_third(final_norm_tuple)))
+    # constraint = And(constraint, norm_first(final_norm_tuple))
+    # constraint = And(constraint, out_exp == norm_second(final_norm_tuple))
+    # constraint = And(constraint, out_mant_final == Extract(22, 0, norm_third(final_norm_tuple)))
 
     return out, constraint
 
@@ -528,18 +541,20 @@ def main():
     a = BitVec('a', 32)
     b = BitVec('b', 32)
 
-    return fp_adder(a, b)
+    # return fp_adder(a, b)
     # return subtractor(a, b)
-    # return adder(a, b)
+    return adder(a, b)
     
     print('testing commit')
 
 if __name__ == "__main__":
 
-    # a = BitVec('a', 23)
-    # b = BitVec('b', 23)
+    # a = BitVec('a', 32)
+    # b = BitVec('b', 32)
 
-    # out, constraint = main()
+    # out, constraint, cout = main()
+    # print("out = ", out)
+    # print("constraint = ", constraint)
 
     a_float = FP('a_float', Float32())
     b_float = FP('b_float', Float32())
@@ -570,7 +585,10 @@ if __name__ == "__main__":
     dut_out, dut_constraint = fp_adder(a, b)
 
     solver = Solver()
+    # solver.add(constraint)
+    # solver.add(out != a + b)
     # solver.add(dut_out == out)
+
     solver.add(val_constraint)
     solver.add(dut_constraint)
     # converted_out = Float32()
