@@ -49,20 +49,20 @@ def fp_adder_exp_AgeqB(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, 
     # tmp_mant_low = Extract(22, 0, tmp_mant)
     tmp_mant_low = Extract(23, 0, tmp_mant)
 
-    mant_res = BitVec('mant_res', 24)
+    mant_res = BitVec('mant_res', 25)
     mant_res_cons = Bool('mant_res_cons')
     cout = BitVec('cout', 1)
     # mant_tuple = mkOpTuple(mant_res, mant_res_cons, cout)
     mant_tuple = If(a_sign == b_sign, adder_tuple_wrapper(a_mant, tmp_mant_low), subtractor_tuple_wrapper(a_mant, tmp_mant_low))
     # print("mant_tuple size = ", op_first(mant_tuple).size())
-    constraint = And(constraint, Extract(22, 0, op_first(mant_tuple)) == Extract(22, 0, mant_res))
-    constraint = And(constraint, op_third(mant_tuple) == Extract(23, 23, mant_res))
+    constraint = And(constraint, Extract(23, 0, mant_res) == op_first(mant_tuple))
+    constraint = And(constraint, Extract(24, 24, mant_res) == op_third(mant_tuple))
     constraint = And(constraint, op_second(mant_tuple))
-    pad = BitVecVal(0, 1)
-    mant_res_final = BitVec('mant_res_final', 25)
-    constraint = And(constraint, mant_res_final == Concat(pad, mant_res))
+    # pad = BitVecVal(0, 1)
+    # mant_res_final = BitVec('mant_res_final', 25)
+    # constraint = And(constraint, mant_res_final == Concat(pad, mant_res))
 
-    ret_tuple = mkTupleType(constraint, mant_res_final, out_exp, out_sign)
+    ret_tuple = mkTupleType(constraint, mant_res, out_exp, out_sign)
 
     return ret_tuple
 
@@ -110,11 +110,9 @@ def fp_adder_exp_BgeqA(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, 
     # pad = BitVecVal(0, 1)
     # mant_res_final = BitVec('mant_res_final', 25)
     # constraint = And(constraint, mant_res_final == Concat(pad, mant_res))
-    ret_tuple = mkTupleType(constraint, mant_res, out_exp, out_sign)
-
     
-    # 
-    # 
+    # Changing how the ret tuple is composed here somehow segfaults the code
+    ret_tuple = mkTupleType(constraint, mant_res, out_exp, out_sign)
 
     # ret_tuple = mkTupleType(constraint, mant_res_final, out_exp, out_sign)
     return ret_tuple
