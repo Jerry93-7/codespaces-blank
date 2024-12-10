@@ -299,28 +299,28 @@ def fp_adder_exp_eq_s_BgeqA(b_sign, out_sign, b_exp, out_exp, a_mant, b_mant, ou
 
     # out_mant_low = Extract(23, 0, out_mant)
 
-    res_mant = BitVec('res_mant', 25)
-    res_exp = BitVec('res_exp', 8)
-    res_sign = BitVec('res_sign', 1)
-    print(b_mant)
-    print(a_mant)
+    res_mant_BsubA = BitVec('res_mant_BsubA', 25)
+    res_exp_BsubA = BitVec('res_exp_BsubA', 8)
+    res_sign_BsubA = BitVec('res_sign_BsubA', 1)
+    # print(b_mant)
+    # print(a_mant)
     sub_out, sub_cons, borrow_in_next = subtractor(b_mant, a_mant)
     # print(out_mant)
     constraint = And(constraint, sub_cons)
-    constraint = And(constraint, Extract(23, 0, res_mant) == sub_out)
-    constraint = And(constraint, Extract(24, 24, res_mant) == borrow_in_next)
+    constraint = And(constraint, Extract(23, 0, res_mant_BsubA) == sub_out)
+    constraint = And(constraint, Extract(24, 24, res_mant_BsubA) == borrow_in_next)
     # print(out_mant)
-    constraint = And(constraint, res_sign == b_sign)
-    constraint = And(constraint, res_exp == b_exp)
+    constraint = And(constraint, res_sign_BsubA == b_sign)
+    constraint = And(constraint, res_exp_BsubA == b_exp)
 
     res_mant_expand = BitVec('res_mant_expand', 28)
-    constraint = And(constraint, res_mant_expand == Concat(res_mant, BitVecVal(0, 3)))
+    constraint = And(constraint, res_mant_expand == Concat(res_mant_BsubA, BitVecVal(0, 3)))
 
     # print("constraint:", type(constraint))
     # print("out_mant:", type(out_mant))
     # print("out_exp:", type(out_exp))
     # print("out_sign:", type(out_sign))
-    ret_tuple = mkTupleType(constraint, res_mant_expand, res_exp, res_sign)
+    ret_tuple = mkTupleType(constraint, res_mant_expand, res_exp_BsubA, res_sign_BsubA)
 
     return ret_tuple
 
@@ -333,8 +333,8 @@ def norm_sub_shift(in_exp, in_mant, num_lead_zeros):
     # constraint = And(constraint, mant_check == in_mant)
     # constraint = And(constraint, exp_check == in_exp)
 
-    norm_exp = BitVec('norm_exp', 8)
-    norm_mant = BitVec('norm_mant', 28)
+    norm_sub_exp = BitVec('norm_sub_exp', 8)
+    norm_sub_mant = BitVec('norm_sub_mant', 28)
     lead_zeros_check = Int('lead_zeros_check')
 
     lead_zeros_mant_width = BitVec('lead_zeros_mant_width', 28)
@@ -347,12 +347,12 @@ def norm_sub_shift(in_exp, in_mant, num_lead_zeros):
     
     # constrain inputs to only numbers that do not require rounding
     # dude did not put a rounder into his FPU so FPU is guaranteed failing on inputs that need to be rounded
-    constraint = And(constraint, If(num_lead_zeros < 23, Extract((in_mant.size() - num_lead_zeros - 1), max((in_mant.size() - num_lead_zeros - 1 - 2), 0), in_mant) < BitVecVal(0b100, 3), True))
+    # constraint = And(constraint, If(num_lead_zeros < 23, Extract((in_mant.size() - num_lead_zeros - 1), max((in_mant.size() - num_lead_zeros - 1 - 2), 0), in_mant) < BitVecVal(0b100, 3), True))
     
-    constraint = And(constraint, norm_mant == (in_mant << lead_zeros_mant_width))
-    constraint = And(constraint, norm_exp == (in_exp - lead_zeros_exp_width))
+    constraint = And(constraint, norm_sub_mant == (in_mant << lead_zeros_mant_width))
+    constraint = And(constraint, norm_sub_exp == (in_exp - lead_zeros_exp_width))
 
-    ret_tuple = mkNormTuple(constraint, norm_exp, norm_mant)
+    ret_tuple = mkNormTuple(constraint, norm_sub_exp, norm_sub_mant)
 
     return ret_tuple
 
@@ -366,32 +366,32 @@ def add_normaliser(in_exp, in_mant):
 
     normaliser_mant = BitVec('normaliser_mant', 28)
     normaliser_exp = BitVec('normaliser_exp', 8)
-    # in_mant_check = BitVec('in_mant_check', 21)
-    # constraint = And(constraint, in_mant_check == Extract(23, 3, in_mant))
-
-    norm_tuple = If(Extract(23, 0, in_mant) == BitVecVal(0b000000000000000000000001, 24), norm_sub_shift(in_exp, in_mant, 23),
-                            If(Extract(23, 1, in_mant) == BitVecVal(0b00000000000000000000001, 23), norm_sub_shift(in_exp, in_mant, 22),
-                                If(Extract(23, 2, in_mant) == BitVecVal(0b0000000000000000000001, 22), norm_sub_shift(in_exp, in_mant, 21),
-                                    If(Extract(23, 3, in_mant) == BitVecVal(0b000000000000000000001, 21), norm_sub_shift(in_exp, in_mant, 20),
-                                        If(Extract(23, 4, in_mant) == BitVecVal(0b00000000000000000001, 20), norm_sub_shift(in_exp, in_mant, 19), 
-                                           If(Extract(23, 5, in_mant) == BitVecVal(0b0000000000000000001, 19), norm_sub_shift(in_exp, in_mant, 18), 
-                                              If(Extract(23, 6, in_mant) == BitVecVal(0b000000000000000001, 18), norm_sub_shift(in_exp, in_mant, 17), 
-                                                 If(Extract(23, 7, in_mant) == BitVecVal(0b00000000000000001, 17), norm_sub_shift(in_exp, in_mant, 16), 
-                                                    If(Extract(23, 8, in_mant) == BitVecVal(0b0000000000000001, 16), norm_sub_shift(in_exp, in_mant, 15), 
-                                                       If(Extract(23, 9, in_mant) == BitVecVal(0b000000000000001, 15), norm_sub_shift(in_exp, in_mant, 14), 
-                                                          If(Extract(23, 10, in_mant) == BitVecVal(0b00000000000001, 14), norm_sub_shift(in_exp, in_mant, 13), 
-                                                             If(Extract(23, 11, in_mant) == BitVecVal(0b0000000000001, 13), norm_sub_shift(in_exp, in_mant, 12), 
-                                                                If(Extract(23, 12, in_mant) == BitVecVal(0b000000000001, 12), norm_sub_shift(in_exp, in_mant, 11), 
-                                                                   If(Extract(23, 13, in_mant) == BitVecVal(0b00000000001, 11), norm_sub_shift(in_exp, in_mant, 10), 
-                                                                      If(Extract(23, 14, in_mant) == BitVecVal(0b0000000001, 10), norm_sub_shift(in_exp, in_mant, 9), 
-                                                                         If(Extract(23, 15, in_mant) == BitVecVal(0b000000001, 9), norm_sub_shift(in_exp, in_mant, 8), 
-                                                                            If(Extract(23, 16, in_mant) == BitVecVal(0b00000001, 8), norm_sub_shift(in_exp, in_mant, 7), 
-                                                                               If(Extract(23, 17, in_mant) == BitVecVal(0b0000001, 7), norm_sub_shift(in_exp, in_mant, 6), 
-                                                                                  If(Extract(23, 18, in_mant) == BitVecVal(0b000001, 6), norm_sub_shift(in_exp, in_mant, 5), 
-                                                                                     If(Extract(23, 19, in_mant) == BitVecVal(0b00001, 5), norm_sub_shift(in_exp, in_mant, 4), 
-                                                                                        If(Extract(23, 20, in_mant) == BitVecVal(0b0001, 4), norm_sub_shift(in_exp, in_mant, 3), 
-                                                                                           If(Extract(23, 21, in_mant) == BitVecVal(0b001, 3), norm_sub_shift(in_exp, in_mant, 2), 
-                                                                                              If(Extract(23, 22, in_mant) == BitVecVal(0b01, 2), norm_sub_shift(in_exp, in_mant, 1), 
+    in_mant_check = BitVec('in_mant_check', 28)
+    constraint = And(constraint, in_mant_check == in_mant)#Extract(23, 0, in_mant))
+    # bug is here in normaliser
+    norm_tuple = If(Extract(27, 0, in_mant) == BitVecVal(0b00_0000_0000_0000_0000_0000_0001, 26), norm_sub_shift(in_exp, in_mant, 23),
+                            If(Extract(27, 1, in_mant) == BitVecVal(0b0_0000_0000_0000_0000_0000_0001, 25), norm_sub_shift(in_exp, in_mant, 22),
+                                If(Extract(27, 2, in_mant) == BitVecVal(0b0000000000000000000001, 22), norm_sub_shift(in_exp, in_mant, 21),
+                                    If(Extract(27, 3, in_mant) == BitVecVal(0b000000000000000000001, 21), norm_sub_shift(in_exp, in_mant, 20),
+                                        If(Extract(27, 4, in_mant) == BitVecVal(0b00000000000000000001, 20), norm_sub_shift(in_exp, in_mant, 19), 
+                                           If(Extract(27, 5, in_mant) == BitVecVal(0b0000000000000000001, 19), norm_sub_shift(in_exp, in_mant, 18), 
+                                              If(Extract(27, 6, in_mant) == BitVecVal(0b000000000000000001, 18), norm_sub_shift(in_exp, in_mant, 17), 
+                                                 If(Extract(27, 7, in_mant) == BitVecVal(0b00000000000000001, 17), norm_sub_shift(in_exp, in_mant, 16), 
+                                                    If(Extract(27, 8, in_mant) == BitVecVal(0b0000000000000001, 16), norm_sub_shift(in_exp, in_mant, 15), 
+                                                       If(Extract(27, 9, in_mant) == BitVecVal(0b000000000000001, 15), norm_sub_shift(in_exp, in_mant, 14), 
+                                                          If(Extract(27, 10, in_mant) == BitVecVal(0b00000000000001, 14), norm_sub_shift(in_exp, in_mant, 13), 
+                                                             If(Extract(27, 11, in_mant) == BitVecVal(0b0000000000001, 13), norm_sub_shift(in_exp, in_mant, 12), 
+                                                                If(Extract(27, 12, in_mant) == BitVecVal(0b000000000001, 12), norm_sub_shift(in_exp, in_mant, 11), 
+                                                                   If(Extract(27, 13, in_mant) == BitVecVal(0b00000000001, 11), norm_sub_shift(in_exp, in_mant, 10), 
+                                                                      If(Extract(27, 14, in_mant) == BitVecVal(0b0000000001, 10), norm_sub_shift(in_exp, in_mant, 9), 
+                                                                         If(Extract(27, 15, in_mant) == BitVecVal(0b000000001, 9), norm_sub_shift(in_exp, in_mant, 8), 
+                                                                            If(Extract(27, 16, in_mant) == BitVecVal(0b00000001, 8), norm_sub_shift(in_exp, in_mant, 7), 
+                                                                               If(Extract(27, 17, in_mant) == BitVecVal(0b0000001, 7), norm_sub_shift(in_exp, in_mant, 6), 
+                                                                                  If(Extract(27, 18, in_mant) == BitVecVal(0b000001, 6), norm_sub_shift(in_exp, in_mant, 5), 
+                                                                                     If(Extract(27, 19, in_mant) == BitVecVal(0b00001, 5), norm_sub_shift(in_exp, in_mant, 4), 
+                                                                                        If(Extract(27, 20, in_mant) == BitVecVal(0b0001, 4), norm_sub_shift(in_exp, in_mant, 3), 
+                                                                                           If(Extract(27, 21, in_mant) == BitVecVal(0b001, 3), norm_sub_shift(in_exp, in_mant, 2), 
+                                                                                              If(Extract(27, 22, in_mant) == BitVecVal(0b01, 2), norm_sub_shift(in_exp, in_mant, 1), 
                                                                                                  mkNormTuple(True, in_exp, in_mant))))))))))))))))))))))))
     constraint = And(constraint, norm_first(norm_tuple))
     constraint = And(constraint, normaliser_exp == norm_second(norm_tuple))
@@ -466,6 +466,12 @@ def fp_exp_compare(a_sign, b_sign, non_norm_sign, a_exp, b_exp, non_norm_exp, a_
     ret_mant = BitVec('ret_mant', 28)
     ret_exp = BitVec('ret_exp', 8)
     ret_sign = BitVec('ret_sign', 1)
+
+    check_A_exp = BitVec('check_A_exp', 8)
+    check_B_exp = BitVec('check_B_exp', 8)
+    
+    constraint = And(constraint, check_A_exp == a_exp)
+    constraint = And(constraint, check_B_exp == b_exp)
 
     # ret_tuple = mkTupleType(ret_constraint, ret_mant, ret_exp, ret_sign)   
 
@@ -847,11 +853,11 @@ if __name__ == "__main__":
     a = BitVec('a', 32)
     b = BitVec('b', 32)
 
-    # a_test = BitVecVal(0b11000000000000000100100010000010, 32)
-    # b_test = BitVecVal(0b01000000000000000100100001111100, 32)
+    a_test = BitVecVal(0b1_10000000_00100000000000000000000, 32)
+    b_test = BitVecVal(0b0_10000000_10000000000000000000000, 32)
 
-    # val_constraint = And(val_constraint, a == a_test)
-    # val_constraint = And(val_constraint, b == b_test)
+    val_constraint = And(val_constraint, a == a_test)
+    val_constraint = And(val_constraint, b == b_test)
 
     nan = Float32()
     inf = Float32()
