@@ -1,23 +1,4 @@
 from z3 import *
-# set_param('verbose', 10)
-
-# from BitVector import BitVector
-# Type = Datatype(f'Tuple({a.name()},{b.name()},{c.name()},{d.name()})')
-# def Tuple(a, b, c, d):
-    
-#     Type = Datatype('Tuple')
-#     Type.declare('mk', 
-#                 ('first', BoolSort()), 
-#                 ('second', BitVecSort(24)), 
-#                 ('third', BitVecSort(8)), 
-#                 ('fourth', BitVecSort(1))
-#                  )
-#     Type = Type.create()
-#     return Type
-    
-# Tuple = Datatype('Tuple')
-# Tuple.declare('mk', ('first', Bool()), ('second', BitVec()), ('third', BitVec()), ('fourth', BitVec()))
-# Tuple = Tuple.create()
 
 TupleType, mkTupleType, (first, second, third, fourth) = TupleSort('MyTuple', [BoolSort(), BitVecSort(28), BitVecSort(8), BitVecSort(1)])
 
@@ -75,16 +56,14 @@ def sticky_bit_calc(input, index):
 
 def fp_adder_exp_AgeqB(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, b_mant, out_mant):
     constraint = True
-    # print("a_mant size = ", a_mant.size())
-    # print("b_mant size = ", b_mant.size())
+
     exp_diff_AgeqB = BitVec('exp_diff_AgeqB', 8)
 
     tmp_mant = BitVec('tmp_mant', 27)
 
     res_sign = BitVec('res_sign', 1)
     res_exp = BitVec('res_exp', 8)
-    res_mant = BitVec('res_mant', 28)
-    # res_mant_extra_bits = BitVec('res_mant_extra_bits', 26)
+    res_mant_AgeqB = BitVec('res_mant_AgeqB', 28)
 
     constraint = And(constraint, res_sign == a_sign)
     constraint = And(constraint, res_exp == a_exp)
@@ -97,11 +76,7 @@ def fp_adder_exp_AgeqB(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, 
 
     exp_diff_expand = BitVec('exp_diff_expand', 24)
     leading_zeros = BitVecVal(0, 16)
-    # exp_diff_expand = Concat(leading_zeros, exp_diff)
     constraint = And(constraint, exp_diff_expand == Concat(leading_zeros, exp_diff_AgeqB))
-
-    # tmp_mant_low = Extract(22, 0, tmp_mant)
-    # tmp_mant_low = Extract(23, 0, tmp_mant)
 
     temp_mask = BitVec('temp_mask', 24)
     mask_shift = BitVec('mask_shift', 24)
@@ -119,28 +94,28 @@ def fp_adder_exp_AgeqB(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, 
     constraint = And(constraint, lsb_shift_bits == (b_mant & lsb_shift_bits))
     
     low_bits = BitVec('low_bits', 24)
-    constraint = And(constraint, low_bits == (lsb_shift_bits >> mask_shift))
+    constraint = And(constraint, low_bits == LShR(lsb_shift_bits, mask_shift))
     shifted_off_bits = BitVec('shifted_off_bits', 3)
     constraint = And(constraint, Extract(2, 1, shifted_off_bits) == Extract(2, 1, low_bits))
     # insert sticky here
     sticky_tuple = sticky_bit_calc(b_mant, exp_diff_expand)
     constraint = And(constraint, Extract(0, 0, shifted_off_bits) == get_sticky(sticky_tuple))
 
-    constraint = And(constraint, tmp_mant == Concat((b_mant >> exp_diff_expand), Extract(2, 0, shifted_off_bits)))
+    constraint = And(constraint, tmp_mant == Concat(LShR(b_mant, exp_diff_expand), Extract(2, 0, shifted_off_bits)))
 
     # a_mant_expand = BitVec()
 
     mant_tuple = If(a_sign == b_sign, adder_tuple_wrapper_big(Concat(a_mant, BitVecVal(0, 3)), tmp_mant), subtractor_tuple_wrapper_big(Concat(a_mant, BitVecVal(0, 3)), tmp_mant))
     # print("mant_tuple size = ", op_first(mant_tuple).size())
-    constraint = And(constraint, Extract(26, 0, res_mant) == op_big_mant(mant_tuple))
-    constraint = And(constraint, Extract(27, 27, res_mant) == op_big_cout(mant_tuple))
+    constraint = And(constraint, Extract(26, 0, res_mant_AgeqB) == op_big_mant(mant_tuple))
+    constraint = And(constraint, Extract(27, 27, res_mant_AgeqB) == op_big_cout(mant_tuple))
     constraint = And(constraint, op_big_cons(mant_tuple))
     
     # pad = BitVecVal(0, 1)
     # mant_res_final = BitVec('mant_res_final', 25)
     # constraint = And(constraint, mant_res_final == Concat(pad, mant_res))
 
-    ret_tuple = mkTupleType(constraint, res_mant, res_exp, res_sign)
+    ret_tuple = mkTupleType(constraint, res_mant_AgeqB, res_exp, res_sign)
 
     return ret_tuple
 
@@ -185,26 +160,20 @@ def fp_adder_exp_BgeqA(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant, 
     constraint = And(constraint, lsb_shift_bits == (a_mant & lsb_shift_bits))
     
     low_bits = BitVec('low_bits', 24)
-    constraint = And(constraint, low_bits == (lsb_shift_bits >> mask_shift))
+    constraint = And(constraint, low_bits == LShR(lsb_shift_bits, mask_shift))
     shifted_off_bits = BitVec('shifted_off_bits', 3)
     constraint = And(constraint, Extract(2, 1, shifted_off_bits) == Extract(2, 1, low_bits))
     # insert sticky here
     sticky_tuple = sticky_bit_calc(a_mant, exp_diff_expand)
     constraint = And(constraint, Extract(0, 0, shifted_off_bits) == get_sticky(sticky_tuple))
 
-    constraint = And(constraint, tmp_mant == Concat((a_mant >> exp_diff_expand), Extract(2, 0, shifted_off_bits)))
-
-    # constraint = And(constraint, tmp_mant == (b_mant >> exp_diff_expand))
-
-    # tmp_mant_low = Extract(23, 0, tmp_mant)
+    constraint = And(constraint, tmp_mant == Concat(LShR(a_mant, exp_diff_expand), Extract(2, 0, shifted_off_bits)))
 
     mant_res = BitVec('mant_res', 25)
     mant_res_cons = Bool('mant_res_cons')
     cout = BitVec('cout', 1)
     # # mant_tuple = mkOpTuple(mant_res, mant_res_cons, cout)
     mant_tuple = If(a_sign == b_sign, adder_tuple_wrapper_big(Concat(b_mant, BitVecVal(0, 3)), tmp_mant), subtractor_tuple_wrapper_big(Concat(b_mant, BitVecVal(0, 3)), tmp_mant))
-    # # print("mant_tuple sort =  ", mant_tuple[0])
-    # # print("mant_tuple =  ", op_first(mant_tuple))
 
     # Issue is with this line, more specifically, op_first and whatnot seems to be what is causing the segfault
     # test_vec = BitVec('test_vec', 24)
@@ -254,10 +223,6 @@ def fp_adder_exp_eq_s_eq(a_sign, out_sign, a_exp, out_exp, a_mant, b_mant, out_m
     res_mant_expand = BitVec('res_mant_expand', 28)
     constraint = And(constraint, res_mant_expand == Concat(res_mant, BitVecVal(0, 3)))
 
-    # print("constraint:", type(constraint))
-    # print("out_mant:", type(out_mant))
-    # print("out_exp:", type(out_exp))
-    # print("out_sign:", type(out_sign))
     ret_tuple = mkTupleType(constraint, res_mant_expand, res_exp, res_sign)
 
     return ret_tuple
@@ -366,9 +331,9 @@ def add_normaliser(in_exp, in_mant):
     normaliser_mant = BitVec('normaliser_mant', 28)
     normaliser_exp = BitVec('normaliser_exp', 8)
     in_mant_check = BitVec('in_mant_check', 28)
-    constraint = And(constraint, in_mant_check == in_mant)#Extract(23, 0, in_mant))
+    constraint = And(constraint, in_mant_check == in_mant)
 
-    
+
     norm_tuple = If(Extract(27, 0, in_mant) == BitVecVal(0b0000_0000_0000_0000_0000_0000_0001, 28), norm_sub_shift(in_exp, in_mant, 27),
                     If(Extract(27, 1, in_mant) == BitVecVal(0b000_0000_0000_0000_0000_0000_0001, 27), norm_sub_shift(in_exp, in_mant, 26),
                         If(Extract(27, 2, in_mant) == BitVecVal(0b000000_0000_0000_0000_0000_0001, 26), norm_sub_shift(in_exp, in_mant, 25),
@@ -406,9 +371,6 @@ def add_normaliser(in_exp, in_mant):
 
     return ret_tuple
 
-    # ret_tuple = mkNormTuple(constraint, in_exp, in_mant)
-
-    # return ret_tuple
 
 def fp_sign_compare(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant_full, b_mant_full, out_mant):
 
@@ -436,7 +398,7 @@ def fp_sign_compare(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant_full
     # return constraint
     # return non_norm_constraint, non_norm_mant, non_norm_exp, non_norm_sign 
 
-# Issue: If cannot handle tuples in return statement
+
 def fp_mant_compare(a_sign, b_sign, out_sign, a_exp, b_exp, out_exp, a_mant_full, b_mant_full, out_mant):
     
     # constraint = True
@@ -548,7 +510,7 @@ def rounder(in_mant):
     round_up_tuple = mkRoundTuple(op_second(increment_tuple), op_first(increment_tuple))
 
     # *fix check* constraint for rounding up
-    # constraint = And(constraint, Not(Or((Extract(2, 2, in_mant) == 0), And((Extract(2, 0, in_mant) == 0b100), (Extract(3, 3, in_mant) == 0)))))
+    constraint = And(constraint, Not(Or((Extract(2, 2, in_mant) == 0), And((Extract(2, 0, in_mant) == 0b100), (Extract(3, 3, in_mant) == 0)))))
 
     if_tuple = If(Or((Extract(2, 2, in_mant) == 0), And((Extract(2, 0, in_mant) == 0b100), (Extract(3, 3, in_mant) == 0))), 
                       mkRoundTuple(True, Extract(26, 3, in_mant)), round_up_tuple)
@@ -653,26 +615,26 @@ def fp_adder(a, b):
     # constraint = And(constraint, out_exp == norm_exp)
     # constraint = And(constraint, out_mant == norm_mant)
 
-    round_exp = BitVec('round_exp', 8)
-    round_mant = BitVec('round_mant', 28)
+    pre_round_exp = BitVec('pre_round_exp', 8)
+    pre_round_mant = BitVec('pre_round_mant', 28)
 
     final_norm_tuple = add_normaliser(ovf_exp, ovf_mant)
 
     constraint = And(constraint, norm_first(final_norm_tuple))
-    constraint = And(constraint, round_exp == norm_second(final_norm_tuple))
-    constraint = And(constraint, round_mant == norm_third(final_norm_tuple))
+    constraint = And(constraint, pre_round_exp == norm_second(final_norm_tuple))
+    constraint = And(constraint, pre_round_mant == norm_third(final_norm_tuple))
 
     ovf_mant_post_round = BitVec('ovf_mant_post_round', 24)
     # ovf_exp_post_round = BitVec('ovf_exp_post_round', 8)
 
-    round_out_tuple = rounder(round_mant)
+    round_out_tuple = rounder(pre_round_mant)
 
     constraint = And(constraint, op_second(round_out_tuple))
     constraint = And(constraint, ovf_mant_post_round == op_first(round_out_tuple))
     
     # ovf_sign = BitVec('ovf_exp', 1)
 
-    ovf_tuple_post_round = If(Extract(23, 23, ovf_mant_post_round) == 1, handle_ovf(round_exp, ovf_mant_post_round), mkOvfTuple(True, round_exp, ovf_mant_post_round))
+    ovf_tuple_post_round = If(Extract(23, 23, ovf_mant_post_round) == 1, handle_ovf(pre_round_exp, ovf_mant_post_round), mkOvfTuple(True, pre_round_exp, ovf_mant_post_round))
 
     constraint = And(constraint, ovf_tuple_cons(ovf_tuple_post_round))
     constraint = And(constraint, out_exp == ovf_tuple_exp(ovf_tuple_post_round))
@@ -864,11 +826,11 @@ if __name__ == "__main__":
     a = BitVec('a', 32)
     b = BitVec('b', 32)
 
-    # a_test = BitVecVal(0b1_10000000_00100000000000000000000, 32)
-    # b_test = BitVecVal(0b0_10000000_10000000000000000000000, 32)
+    a_test = BitVecVal(0b00010010100000000000000100001000, 32)
+    b_test = BitVecVal(0b10001010111111100100000000000000, 32)
 
-    # val_constraint = And(val_constraint, a == a_test)
-    # val_constraint = And(val_constraint, b == b_test)
+    val_constraint = And(val_constraint, a == a_test)
+    val_constraint = And(val_constraint, b == b_test)
 
     nan = Float32()
     inf = Float32()
