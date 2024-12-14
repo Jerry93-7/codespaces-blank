@@ -32,39 +32,8 @@ module fpu_tb();
     initial begin
         
         $monitor($time, , "out        = %b", out, " | match: %b", pred == out, " | correct: %b\n", correct == out,
-                //  $time, , "o_exponent = %b\n", dut.M1.o_exponent,
-                //  $time, , "o_e        = %b\n", dut.M1.o_e,
                  $time, , "correct    = %b\n", correct);
 
-        
-
-        // $monitor($time, , "tmp_mantissa     = %b\n", dut.A1.tmp_mantissa,
-        //          $time, , "a_mantissa       = %b\n", dut.A1.a_mantissa);
-
-        // $monitor($time, , "mask         = %b |\n", 24'b111 << dut.A1.diff,
-        //          $time, , "mask         = %b |\n", dut.A1.mask,
-        //          $time, , "a_mantissa   = %b |\n", dut.A1.a_mantissa,
-        //         //  $time, , "a_mantissa_s = %b |\n", (dut.A1.a_mantissa >> dut.A1.diff),
-        //          $time, , "extract_bits = %b\n", dut.A1.extract_bits,
-        //          $time, , "low_bits     = %b |\n", dut.A1.low_bits,
-        //          $time, , "shifted_off_bits  = %b |\n", dut.A1.shifted_off_bits, 
-        //          $time, , "tmp_mantissa      = %b |\n", dut.A1.tmp_mantissa,  
-        //          $time, , "b_mantissa        = %b |\n", {dut.A1.b_mantissa, 3'b000},  
-        //          $time, , "t_mant            = %b\n", dut.A1.t_mant,
-        //          $time, , "pre_round_mant    = %b\n", dut.A1.pre_round_mant,
-        //          $time, , "post_round_mant   = %b\n", dut.A1.post_round_mant,
-        //          $time, , "o_mantissa        = %b |\n", dut.A1.o_mantissa,
-        //          $time, , "correct           = %b\n", correct);
-
-        // $monitor($time, , "tmp_mantissa         = %b\n", dut.A1.tmp_mantissa,
-        //          $time, , "{b_mantissa, 3'b000} = %b\n", {dut.A1.b_mantissa, 3'b000},
-        //          $time, , "t_mant               = %b\n", dut.A1.t_mant);
-
-        // $monitor($time, , "o_m         = %b\n", dut.A1.o_m);
-
-        // $monitor($time, , "i_m       = %b\n", dut.A1.i_m,
-        //          $time, , "i_m[23:3] = %b\n", dut.A1.i_m[23:3],
-        //          $time, , "i_e       = %b\n", dut.A1.i_e);
 
         // add
         // op = 2'b00;
@@ -93,9 +62,10 @@ module fpu_tb();
         // MUL BUGS
 
         // DOESNT PROPERLY HANDLE RESULT BEING DENORM
-        // a           = 32'b00000001001001010100110011100110;
-        // b           = 32'b00100111111100011011110001110110;
-        // correct     = 32'b01101001100111000001011100010101;
+        // a           = 32'b0_00000010_01001010100110011100110;
+        // b           = 32'b0_01001111_11100011011110001110110;
+        // pred        = 32'b0_11010011_00111000001011100010101;
+        // correct     = 32'b0_00000000_00000000000000000000000;
         
         // DOESNT PROPERLY ROUND
         a       = 32'b00000011111000101101001000101101;
