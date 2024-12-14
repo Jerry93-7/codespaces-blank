@@ -137,10 +137,6 @@ def norm_sub_shift(in_exp, in_mant, num_lead_zeros):
     constraint = And(constraint, (lead_zeros_prod_width == BitVecVal(num_lead_zeros, 48)))
     constraint = And(constraint, (lead_zeros_exp_width == BitVecVal(num_lead_zeros, 8)))
 
-    # constrain inputs to only numbers that do not require rounding
-    # dude did not put a rounder into his FPU so FPU is guaranteed failing on inputs that need to be rounded
-    # constraint = And(constraint, If(num_lead_zeros < 23, Extract((in_mant.size() - num_lead_zeros - 1), max((in_mant.size() - num_lead_zeros - 1 - 2), 0), in_mant) < BitVecVal(0b100, 3), True))
-    
     constraint = And(constraint, norm_sub_prod == (in_mant << lead_zeros_prod_width))
     constraint = And(constraint, norm_sub_exp == (in_exp - lead_zeros_exp_width))
 
@@ -187,8 +183,12 @@ def bitwise_mult(a, b):
     return result, constraint
 
 
+
+
 if __name__ == "__main__":
 
+    # Using Z3Py to check that my multiplication helper function
+    # matches the normal bitvector multiplication from Z3Py
     # a = BitVec('a', 24)
     # b = BitVec('b', 24)
 
@@ -254,17 +254,20 @@ if __name__ == "__main__":
     solver.add(actual_val == (a_float * b_float))
 
 
-    # uncomment for denorm bug output
+    # inputs for denorm bug
     a_test = BitVecVal(0b00000001001001010100110011100110, 32)
     b_test = BitVecVal(0b00100111111100011011110001110110, 32)
+
+    # comment line 257 when running denorm bug inputs
+    # and uncomment for running rounding bug inputs
+    # solver.add(fpIsNormal(actual_val) == True)
 
     val_constraint = And(val_constraint, a == a_test)
     val_constraint = And(val_constraint, b == b_test)
 
-    # comment out for denorm bug output, uncomment for rounding bug output
-    # solver.add(fpIsNormal(actual_val) == True)
-    a_test = BitVecVal(0b00000011111000101101001000101101, 32)
-    b_test = BitVecVal(0b00111100111000110111010011010100, 32)
+    # inputs for rounding bug
+    # a_test = BitVecVal(0b00000011111000101101001000101101, 32)
+    # b_test = BitVecVal(0b00111100111000110111010011010100, 32)
 
     val_constraint = And(val_constraint, a == a_test)
     val_constraint = And(val_constraint, b == b_test)
