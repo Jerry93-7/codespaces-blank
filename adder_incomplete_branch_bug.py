@@ -5,7 +5,7 @@ TupleType, mkTupleType, (get_cons, get_mant, get_exp, get_sign) = TupleSort('MyT
 
 opTuple, mkOpTuple, (op_get_res, op_get_cons, op_get_sign) = TupleSort('OpTuple', [BitVecSort(24), BoolSort(), BitVecSort(1)])
 
-normTuple, mkNormTuple, (norm_get_cons, norm_get_exp, norm_get_sign) = TupleSort('NormTuple', [BoolSort(), BitVecSort(8), BitVecSort(25)])
+normTuple, mkNormTuple, (norm_get_cons, norm_get_exp, norm_get_mant) = TupleSort('NormTuple', [BoolSort(), BitVecSort(8), BitVecSort(25)])
 
 # case where A has greater exponent than B
 def fp_adder_exp_AgeqB(a_sign, b_sign, a_exp, b_exp, a_mant, b_mant):
@@ -47,8 +47,7 @@ def fp_adder_exp_AgeqB(a_sign, b_sign, a_exp, b_exp, a_mant, b_mant):
     return ret_tuple
 
     
-
-
+# case where B has greater exponent than A
 def fp_adder_exp_BgeqA(a_sign, b_sign, a_exp, b_exp, a_mant, b_mant):
     constraint = True
 
@@ -218,7 +217,7 @@ def add_normaliser(in_exp, in_mant):
     
     constraint = And(constraint, norm_get_cons(norm_tuple))
     constraint = And(constraint, normaliser_exp == norm_get_exp(norm_tuple))
-    constraint = And(constraint, normaliser_mant == norm_get_sign(norm_tuple))
+    constraint = And(constraint, normaliser_mant == norm_get_mant(norm_tuple))
 
     ret_tuple = mkNormTuple(constraint, normaliser_exp, normaliser_mant)
 
@@ -289,7 +288,6 @@ def fp_exp_compare(a_sign, b_sign, a_exp, b_exp, a_mant_full, b_mant_full):
     ret_tuple = mkTupleType(constraint, ret_mant, ret_exp, ret_sign)  
 
     return ret_tuple
-
 
 
 # performs the normalization when overflow in mantissa detected
@@ -370,13 +368,13 @@ def fp_adder(a, b):
 
     constraint = And(constraint, norm_get_cons(ovf_tuple))
     constraint = And(constraint, ovf_exp == norm_get_exp(ovf_tuple))
-    constraint = And(constraint, ovf_mant == norm_get_sign(ovf_tuple))
+    constraint = And(constraint, ovf_mant == norm_get_mant(ovf_tuple))
 
     final_norm_tuple = add_normaliser(ovf_exp, ovf_mant)
 
     constraint = And(constraint, norm_get_cons(final_norm_tuple))
     constraint = And(constraint, out_exp == norm_get_exp(final_norm_tuple))
-    constraint = And(constraint, out_mant_final == Extract(22, 0, norm_get_sign(final_norm_tuple)))
+    constraint = And(constraint, out_mant_final == Extract(22, 0, norm_get_mant(final_norm_tuple)))
 
     return out, constraint
 
