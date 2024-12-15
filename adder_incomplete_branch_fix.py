@@ -220,7 +220,7 @@ def add_normaliser(in_exp, in_mant):
                                                                                         If(Extract(23, 20, in_mant) == BitVecVal(0b0001, 4), norm_sub_shift(in_exp, in_mant, 3), 
                                                                                            If(Extract(23, 21, in_mant) == BitVecVal(0b001, 3), norm_sub_shift(in_exp, in_mant, 2), 
                                                                                               If(Extract(23, 22, in_mant) == BitVecVal(0b01, 2), norm_sub_shift(in_exp, in_mant, 1), 
-                                                                                                 mkNormTuple(True, in_exp, in_mant))))))))))))))))))))))))
+                                                                                                 mkNormTuple(True, BitVecVal(-1, 8), BitVecVal(-1, 8)))))))))))))))))))))))))
     constraint = And(constraint, norm_get_cons(norm_tuple))
     constraint = And(constraint, normaliser_exp == norm_get_exp(norm_tuple))
     constraint = And(constraint, normaliser_mant == norm_get_mant(norm_tuple))
