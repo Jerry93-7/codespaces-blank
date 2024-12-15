@@ -177,6 +177,8 @@ def norm_sub_shift(in_exp, in_mant, num_lead_zeros):
     constraint = And(constraint, (lead_zeros_exp_width == BitVecVal(num_lead_zeros, 8)))
 
     constraint = And(constraint, norm_mant == (in_mant << lead_zeros_mant_width))
+    # subtract here because designer does not account for overflow when 
+    # performing operations on exponents
     constraint = And(constraint, norm_exp == (in_exp - lead_zeros_exp_width))
 
     ret_tuple = mkNormTuple(constraint, norm_exp, norm_mant)
