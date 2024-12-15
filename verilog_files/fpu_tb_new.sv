@@ -43,14 +43,20 @@ module fpu_tb();
         
         // ADD BUGS
 
+        // NOTE: pred is the output Z3 gave me translated into binary.  It is essentially just
+        // a check for me to make sure my Z3Py FPU model was accurate to the verilog implementation
+
         // IF BRANCH BUG
         // a       = 32'b1_10000000_00000000100100010000010;
         // b       = 32'b0_10000000_00000000100100001111100;
+        // // pred set to 0 here because Z3 could not give me "undefined" as an output
+        // pred    = 32'd0;
         // correct = 32'b1_01101011_10000000000000000000000;
 
         // IF BRANCH FIX
         // a       = 32'b00010010100000000000000100001000;
         // b       = 32'b10001010111111100100000000000000;
+        // pred    = 32'b00010010100000000000000000001010;
         // correct = 32'b00010010100000000000000000001010;
 
         // ROUNDING FIX
